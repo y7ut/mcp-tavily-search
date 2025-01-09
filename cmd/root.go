@@ -10,7 +10,7 @@ import (
 var RootCmd = &cobra.Command{
 	Use:     "mcp-tavily-search",
 	Short:   "A server implement Model Context Protocol, used for searching from tavily.",
-	Version: "0.0.1",
+	Version: "1.0.0",
 }
 
 func Execute() {

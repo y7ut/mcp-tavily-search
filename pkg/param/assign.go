@@ -8,7 +8,7 @@ import (
 	"strconv"
 )
 
-// Assign 将src赋值给dest
+// Assign assigns src to dest, dest must be a pointer, and src must be a value of the same type.
 func Assign(dest, src any) error {
 	// Check if dest is a pointer
 	destValue := reflect.ValueOf(dest)
@@ -148,6 +148,7 @@ func toUint64(src any) (uint64, error) {
 	}
 }
 
+// toBool converts src to a bool
 func toBool(src any) (bool, error) {
 	switch v := src.(type) {
 	case bool:

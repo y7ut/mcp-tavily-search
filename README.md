@@ -19,7 +19,7 @@ add config to mcp config file.
       "command": "mcp-tavily-search",
       "args": [
         "run",
-        "tvly-*******************" // tavily key
+        "tvly-*******************"
       ]
     }
   }
