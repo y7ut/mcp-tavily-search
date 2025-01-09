@@ -46,7 +46,9 @@ func mcpServerRun() {
 	s := server.NewMCPServer(
 		"MCP Tavily Search 🔍",
 		"1.0.0",
+		server.WithLogging(),
 	)
+
 	tool.Bind(s)
 	// Start the stdio server
 	if err := server.ServeStdio(s); err != nil {

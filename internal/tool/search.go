@@ -13,7 +13,7 @@ import (
 func TavilySearchHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	var keyword string
 	if err := param.Assign(&keyword, request.Params.Arguments["keyword"]); err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
+		return mcp.NewToolResultError(fmt.Sprintf("keyword error: %v", err)), nil
 	}
 
 	result, err := tavily.Search(

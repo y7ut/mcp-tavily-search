@@ -28,6 +28,9 @@ func (o *OptionManager) GetOption(key string) (any, bool) {
 
 // SetOption
 func (o *OptionManager) SetOption(key string, value any) {
+	if value == nil {
+		return
+	}
 	o.options[key] = value
 }
 
