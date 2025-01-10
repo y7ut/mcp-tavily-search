@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/y7ut/mcp-tavily-search/pkg/param"
@@ -123,8 +124,7 @@ func (t *TavilySearch) Search(ctx context.Context, query string, h ...WithOption
 	body = strings.NewReader(string(reqbody))
 
 	if t.Debug {
-		fmt.Printf("use tavily api key: %s\n", t.ApiKey)
-		fmt.Printf("Tavily api input: %s\n", string(reqbody))
+		fmt.Fprintf(os.Stderr, "Tavily api input: %s\n", string(reqbody))
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, TavilySearchEndpoint, body)
@@ -149,7 +149,7 @@ func (t *TavilySearch) Search(ctx context.Context, query string, h ...WithOption
 
 	// 解析响应
 	if t.Debug {
-		fmt.Printf("Tavily API output: %s\n", string(respBody))
+		fmt.Fprintf(os.Stderr, "Tavily API output: %s\n", string(respBody))
 	}
 	var tsResponse TavilySearchResponse
 	if err := json.Unmarshal(respBody, &tsResponse); err != nil {
