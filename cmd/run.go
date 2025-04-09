@@ -27,8 +27,20 @@ var RunCmd = &cobra.Command{
 		if len(args) > 0 {
 			trvilyApiKey = args[0]
 		}
-		includeDomain := strings.Split(os.Getenv("TRVILY_INCLUDE_DOMAINS"), ",")
-		excludeDomain := strings.Split(os.Getenv("TRVILY_EXCLUDE_DOMAINS"), ",")
+		if trvilyApiKey == "" {
+			fmt.Println("TRVILY_API_KEY is required")
+			os.Exit(1)
+		}
+		var includeDomain []string
+		if os.Getenv("TRVILY_INCLUDE_DOMAINS") != "" {
+			includeDomain = strings.Split(os.Getenv("TRVILY_INCLUDE_DOMAINS"), ",")
+		}
+
+		var excludeDomain []string
+		if os.Getenv("TRVILY_EXCLUDE_DOMAINS") != "" {
+			excludeDomain = strings.Split(os.Getenv("TRVILY_EXCLUDE_DOMAINS"), ",")
+		}
+
 		tavily.Init(trvilyApiKey, debug, includeDomain, excludeDomain)
 		mcpServerRun()
 	},
@@ -37,7 +49,7 @@ var RunCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(RunCmd)
 
-	RunCmd.Flags().BoolVarP(&debug, "debug", "d", false, "Enable debug mode")
+	RunCmd.Flags().BoolVarP(&debug, "debug", "d", true, "Enable debug mode")
 }
 
 // mcpServerRun run the mcp server
@@ -47,6 +59,7 @@ func mcpServerRun() {
 		"MCP Tavily Search 🔍",
 		"1.0.0",
 		server.WithLogging(),
+		server.WithResourceCapabilities(true, true),
 	)
 
 	tool.Bind(s)

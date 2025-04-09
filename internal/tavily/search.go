@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -38,8 +39,8 @@ type TavilySearchResquest struct {
 	SearchDepth string `json:"search_depth"`
 	Days        int    `json:"days"`
 
-	IncludeDomains []string `json:"include_domains"`
-	ExcludeDomains []string `json:"exclude_domains"`
+	IncludeDomains []string `json:"include_domains,omitempty"`
+	ExcludeDomains []string `json:"exclude_domains,omitempty"`
 }
 
 type TavilySearch struct {
@@ -48,7 +49,8 @@ type TavilySearch struct {
 	IncludeDomains []string
 	ExcludeDomains []string
 
-	Debug bool
+	Debug  bool
+	logger *log.Logger
 }
 
 type TavilySearchImage struct {
@@ -77,17 +79,37 @@ type TavilySearchResponse struct {
 // Init initialize
 func Init(apiKey string, debug bool, includeDomain []string, excludeDomain []string) {
 	if TravilySearch == nil {
-		TravilySearch = NewTavilySearch(apiKey, debug, includeDomain, excludeDomain)
+		var logger *log.Logger
+		if debug {
+
+			userHomeDir, err := os.UserHomeDir()
+			if err != nil {
+				log.Fatalf("failed to get user dir: %v", err)
+			}
+
+			toolPath := fmt.Sprintf("%s/.mcp-tavily-search", userHomeDir)
+			if _, err := os.Stat(toolPath); os.IsNotExist(err) {
+				err := os.Mkdir(toolPath, os.ModePerm)
+				if err != nil {
+					log.Fatalf("failed to create %s: %v", toolPath, err)
+				}
+			}
+			logFile, _ := os.OpenFile(fmt.Sprintf("%s/search.log", toolPath), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			logger = log.New(logFile, "", log.LstdFlags)
+		}
+
+		TravilySearch = NewTavilySearch(apiKey, debug, includeDomain, excludeDomain, logger)
 	}
 }
 
 // NewTavilySearch
-func NewTavilySearch(apiKey string, debug bool, includeDomain []string, excludeDomain []string) *TavilySearch {
+func NewTavilySearch(apiKey string, debug bool, includeDomain []string, excludeDomain []string, logger *log.Logger) *TavilySearch {
 	return &TavilySearch{
 		ApiKey:         apiKey,
 		Debug:          debug,
 		IncludeDomains: includeDomain,
 		ExcludeDomains: excludeDomain,
+		logger:         logger,
 	}
 }
 
@@ -96,11 +118,28 @@ func Search(ctx context.Context, query string, h ...WithOptionHelper) ([]TavilyS
 	if TravilySearch == nil {
 		return nil, fmt.Errorf("tavily search is not initialized")
 	}
-	return TravilySearch.Search(ctx, query, h...)
+	res, err := TravilySearch.Search(ctx, query, h...)
+	if err != nil {
+		return nil, err
+	}
+	return res.Results, nil
+}
+
+// SearchImage search text and image from tavily with keyword and options
+func SearchImage(ctx context.Context, query string, h ...WithOptionHelper) ([]TavilySearchImage, error) {
+	if TravilySearch == nil {
+		return nil, fmt.Errorf("tavily search is not initialized")
+	}
+	h = append(h, WithOption("include_images", true), WithOption("include_image_descriptions", true))
+	res, err := TravilySearch.Search(ctx, query, h...)
+	if err != nil {
+		return nil, err
+	}
+	return res.Images, nil
 }
 
 // Search
-func (t *TavilySearch) Search(ctx context.Context, query string, h ...WithOptionHelper) ([]TavilySearchResult, error) {
+func (t *TavilySearch) Search(ctx context.Context, query string, h ...WithOptionHelper) (*TavilySearchResponse, error) {
 
 	tavilyParams := NewOptionManager()
 	for _, helper := range h {
@@ -124,7 +163,7 @@ func (t *TavilySearch) Search(ctx context.Context, query string, h ...WithOption
 	body = strings.NewReader(string(reqbody))
 
 	if t.Debug {
-		fmt.Fprintf(os.Stderr, "Tavily api input: %s\n", string(reqbody))
+		t.log(fmt.Sprintf("Tavily api input: %s\n", string(reqbody)))
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, TavilySearchEndpoint, body)
@@ -149,7 +188,7 @@ func (t *TavilySearch) Search(ctx context.Context, query string, h ...WithOption
 
 	// 解析响应
 	if t.Debug {
-		fmt.Fprintf(os.Stderr, "Tavily API output: %s\n", string(respBody))
+		t.log(fmt.Sprintf("Tavily API output: %s\n", string(respBody)))
 	}
 	var tsResponse TavilySearchResponse
 	if err := json.Unmarshal(respBody, &tsResponse); err != nil {
@@ -157,7 +196,7 @@ func (t *TavilySearch) Search(ctx context.Context, query string, h ...WithOption
 	}
 
 	// 整理返回结果
-	return tsResponse.Results, nil
+	return &tsResponse, nil
 }
 
 // applyParams
@@ -196,5 +235,24 @@ func (t *TavilySearch) applyParams(options OptionManager) (*TavilySearchResquest
 		return nil, fmt.Errorf("tavily days error: %d is not a valid days, days must between 1 and 30", tavilyParams.Days)
 	}
 
+	if err := param.Assign(&tavilyParams.IncludeImages, options.GetOptionWithDefault("include_images", false)); err != nil {
+		return nil, err
+	}
+	if err := param.Assign(&tavilyParams.IncludeImageDesc, options.GetOptionWithDefault("include_image_descriptions", false)); err != nil {
+		return nil, err
+	}
+	if err := param.Assign(&tavilyParams.IncludeAnswer, options.GetOptionWithDefault("include_answer", false)); err != nil {
+		return nil, err
+	}
+	if err := param.Assign(&tavilyParams.IncludeRawContent, options.GetOptionWithDefault("include_raw_content", false)); err != nil {
+		return nil, err
+	}
+
 	return &tavilyParams, nil
+}
+
+func (t *TavilySearch) log(v ...any) {
+	if t.logger != nil {
+		t.logger.Println(v...)
+	}
 }

@@ -26,10 +26,30 @@ add config to mcp config file.
 }
 ```
 
+```json
+{
+  "mcpServers": {
+    "tavily": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "docker.ijiwei.com/mcp/mcp-tavily-search:latest",
+        "run",
+        "tvly-*******************"
+      ]
+    }
+  }
+}
+```
+
 or debug
 
 ```sh
 npx @modelcontextprotocol/inspector mcp-tavily-search run tvly-xxxxxxxxxx
+
+npx --no-cache @modelcontextprotocol/inspector docker run --rm -i mcp-tavily-search:latest run tvly-xxxxx
 ```
 
 ## Tools
